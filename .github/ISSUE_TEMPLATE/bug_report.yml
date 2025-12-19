@@ -11,7 +11,7 @@ body:
   - type: checkboxes
     attributes:
       label: Is there an existing issue for this?
-      description: 'Please [search :mag: the issues](https://github.com/AutomateThePlanet/appium-novawindows-driver/issues) to check if this bug has already been reported.'
+      description: 'Please [search :mag: the issues](https://github.com/nguyenvanhuy0612/appium-novawindows-driver/issues) to check if this bug has already been reported.'
       options:
       - label: I have searched the existing issues
         required: true
