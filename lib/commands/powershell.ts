@@ -12,6 +12,7 @@ const NULL_ROOT_ELEMENT = /* ps1 */ `$rootElement = $null`;
 const INIT_ELEMENT_TABLE = /* ps1 */ `$elementTable = New-Object System.Collections.Generic.Dictionary[[string]\`,[AutomationElement]]`;
 
 export async function startPowerShellSession(this: NovaWindowsDriver): Promise<void> {
+    this.log.debug('Starting new PowerShell session...');
     const powerShell = spawn('powershell.exe', ['-NoExit', '-Command', '-']);
     powerShell.stdout.setEncoding('utf8');
     powerShell.stdout.setEncoding('utf8');
@@ -167,6 +168,7 @@ export async function sendIsolatedPowerShellCommand(this: NovaWindowsDriver, com
 
 export async function sendPowerShellCommand(this: NovaWindowsDriver, command: string): Promise<string> {
     const magicNumber = 0xF2EE;
+    // this.log.debug(`Sending PowerShell command: ${command.substring(0, 50)}...`);
 
     if (!this.powerShell) {
         this.log.warn('PowerShell session not running. It was either closed or has crashed. Attempting to start a new session...');
@@ -197,6 +199,7 @@ export async function sendPowerShellCommand(this: NovaWindowsDriver, command: st
                 if (this.powerShellStdErr) {
                     reject(new errors.UnknownError(this.powerShellStdErr));
                 } else {
+                    // this.log.debug(`Received magic char, resolving command.`);
                     resolve(this.powerShellStdOut.replace(`${magicChar}`, '').trim());
                 }
             }

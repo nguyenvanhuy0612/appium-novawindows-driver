@@ -8,7 +8,7 @@ async function main() {
         port: 4723,
         path: '/',
         capabilities: {
-            "appium:automationName": "NovaWindows",
+            "appium:automationName": "NovaWindows2",
             "platformName": "Windows",
             "appium:app": "Root", // Using Root to attach to desktop, verify this is supported
             "appium:newCommandTimeout": 60
@@ -62,6 +62,8 @@ async function main() {
             console.log(`Found root element with ID: ${element.elementId}`);
         }
 
+
+
         // 5. Get Window Handle
         console.log('Test 5: Get Window Handle');
         const handle = await client.getWindowHandle();
@@ -80,6 +82,50 @@ async function main() {
             console.log(`Result exit length: ${JSON.stringify(resultExit).length}`);
         } catch (e) {
             console.log(`Test 7 encountered error as expected (or unexpected): ${e.message}`);
+        }
+
+        // 7.5 Recovery Check
+        console.log('Test 7.5: Recovery Check with simple command');
+        console.log('Waiting 2 seconds...');
+        await new Promise(resolve => setTimeout(resolve, 2000));
+        try {
+            const output = await client.executeScript('powerShell', [{ command: 'Get-Process | Select-Object -First 1' }]);
+            console.log('Test 7.5 passed. Recovery seems to work for simple commands.');
+        } catch (e) {
+            console.error('Test 7.5 failed:', e.message);
+        }
+
+        // 8. Click on Start button (Safe Locator)
+        console.log('Test 8: Click on Start button (Safe Locator)');
+        console.log('Waiting 3 seconds before Test 8...');
+        await new Promise(resolve => setTimeout(resolve, 3000));
+
+        // Use direct child path to avoid deep recursion on Root
+        let startButton;
+        try {
+            // Try to find Taskbar by class name (direct child of Root usually)
+            // Then find Start button inside it.
+            // Note: XPath `//` is recursive. We want direct child.
+            // But client.$ calls `xpathToElIdOrIds`.
+            // If we use `xpath`, we can force direct children?
+            // `/Pane[@ClassName="Shell_TrayWnd"]` is absolute path from Root?
+            // No, `xpath-analyzer` treats `/` as absolute from root.
+            // Let's try finding Taskbar first using absolute path.
+
+            // However, client.$ prefixing is tricky if we don't start with /
+            // If we start with /, it's absolute.
+
+            const taskbar = await client.$('/Pane[@ClassName="Shell_TrayWnd"]');
+            startButton = await taskbar.$('Button[@Name="Start"]');
+        } catch (e) {
+            console.log('Safe locator failed: ' + e.message);
+        }
+
+        if (!startButton || startButton.error) {
+            console.log('Could not find Start button with safe locator. Skipping click.');
+        } else {
+            await startButton.click();
+            console.log('Clicked Start button (Test 8 passed).');
         }
 
     } catch (err) {

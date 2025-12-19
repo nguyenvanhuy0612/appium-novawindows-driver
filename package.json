@@ -1,10 +1,10 @@
 {
-  "name": "appium-novawindows-driver",
-  "version": "1.1.0",
+  "name": "appium-novawindows2-driver",
+  "version": "0.1.2",
   "description": "Appium driver for Windows",
   "keywords": [
     "appium",
-    "novawindows",
+    "novawindows2",
     "uiautomation",
     "powershell",
     "automated testing",
@@ -36,8 +36,8 @@
     "xpath-analyzer": "^3.0.1"
   },
   "appium": {
-    "driverName": "novawindows",
-    "automationName": "NovaWindows",
+    "driverName": "novawindows2",
+    "automationName": "NovaWindows2",
     "platformNames": [
       "Windows"
     ],
