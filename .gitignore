@@ -1,4 +1,10 @@
+# IDE
+.idea
+.vscode
+
 # Logs
+screenshot.png
+output*
 logs
 *.log
 npm-debug.log*
