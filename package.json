@@ -21,10 +21,10 @@
   "license": "Apache-2.0",
   "repository": {
     "type": "git",
-    "url": "https://github.com/nguyenvanhuy0612/appium-novawindows-driver.git"
+    "url": "https://github.com/nguyenvanhuy0612/appium-novawindows2-driver.git"
   },
   "bugs": {
-    "url": "https://github.com/nguyenvanhuy0612/appium-novawindows-driver/issues"
+    "url": "https://github.com/nguyenvanhuy0612/appium-novawindows2-driver/issues"
   },
   "peerDependencies": {
     "appium": "^3.1.0"
