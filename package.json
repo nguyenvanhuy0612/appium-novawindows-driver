@@ -41,7 +41,7 @@
     "platformNames": [
       "Windows"
     ],
-    "mainClass": "NovaWindowsDriver"
+    "mainClass": "NovaWindows2Driver"
   },
   "devDependencies": {
     "@appium/eslint-config-appium-ts": "^2.0.3",
