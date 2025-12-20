@@ -11,11 +11,46 @@ const INIT_ROOT_ELEMENT = /* ps1 */ `$rootElement = [AutomationElement]::RootEle
 const NULL_ROOT_ELEMENT = /* ps1 */ `$rootElement = $null`;
 const INIT_ELEMENT_TABLE = /* ps1 */ `$elementTable = New-Object System.Collections.Generic.Dictionary[[string]\`,[AutomationElement]]`;
 
+async function executeRawCommand(driver: NovaWindows2Driver, command: string): Promise<string> {
+    const magicNumber = 0xF2EE;
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+    const powerShell = driver.powerShell!;
+
+    driver.powerShellStdOut = '';
+    driver.powerShellStdErr = '';
+
+    powerShell.stdin.write(`${command}\n`);
+    powerShell.stdin.write(/* ps1 */ `Write-Output $([char]0x${magicNumber.toString(16)})\n`);
+
+    return await new Promise<string>((resolve, reject) => {
+        const onClose = (code: number) => {
+            reject(new errors.UnknownError(`PowerShell process exited unexpectedly with code ${code}`));
+            driver.powerShell = undefined; // Clear the reference as the process is dead
+        };
+        powerShell.on('close', onClose);
+
+        const onData: Parameters<typeof powerShell.stdout.on>[1] = ((chunk: any) => {
+            const magicChar = String.fromCharCode(magicNumber);
+            if (chunk.toString().includes(magicChar)) {
+                powerShell.stdout.off('data', onData);
+                powerShell.off('close', onClose);
+                if (driver.powerShellStdErr) {
+                    reject(new errors.UnknownError(driver.powerShellStdErr));
+                } else {
+                    resolve(driver.powerShellStdOut.replace(`${magicChar}`, '').trim());
+                }
+            }
+        }).bind(driver);
+
+        powerShell.stdout.on('data', onData);
+    });
+}
+
 export async function startPowerShellSession(this: NovaWindows2Driver): Promise<void> {
     this.log.debug('Starting new PowerShell session...');
     const powerShell = spawn('powershell.exe', ['-NoExit', '-Command', '-']);
     powerShell.stdout.setEncoding('utf8');
-    powerShell.stdout.setEncoding('utf8');
+    powerShell.stderr.setEncoding('utf8');
 
     powerShell.stdout.on('data', (chunk: any) => {
         this.powerShellStdOut += chunk.toString();
@@ -38,27 +73,29 @@ export async function startPowerShellSession(this: NovaWindows2Driver): Promise<
         for (const envVar of envVars) {
             this.caps.appWorkingDir = this.caps.appWorkingDir.replaceAll(`%${envVar}%`, process.env[envVar.toUpperCase()] ?? '');
         }
-        this.sendPowerShellCommand(`Set-Location -Path '${this.caps.appWorkingDir}'`);
+        // Use raw execution to bypass queue
+        await executeRawCommand(this, `Set-Location -Path '${this.caps.appWorkingDir}'`);
     }
 
-    await this.sendPowerShellCommand(SET_UTF8_ENCODING);
-    await this.sendPowerShellCommand(ADD_NECESSARY_ASSEMBLIES);
-    await this.sendPowerShellCommand(USE_UI_AUTOMATION_CLIENT);
-    await this.sendPowerShellCommand(INIT_CACHE_REQUEST);
-    await this.sendPowerShellCommand(INIT_ELEMENT_TABLE);
+    // Use raw execution to bypass queue
+    await executeRawCommand(this, SET_UTF8_ENCODING);
+    await executeRawCommand(this, ADD_NECESSARY_ASSEMBLIES);
+    await executeRawCommand(this, USE_UI_AUTOMATION_CLIENT);
+    await executeRawCommand(this, INIT_CACHE_REQUEST);
+    await executeRawCommand(this, INIT_ELEMENT_TABLE);
 
     // initialize functions
-    await this.sendPowerShellCommand(PAGE_SOURCE);
-    await this.sendPowerShellCommand(FIND_CHILDREN_RECURSIVELY);
+    await executeRawCommand(this, PAGE_SOURCE);
+    await executeRawCommand(this, FIND_CHILDREN_RECURSIVELY);
 
     if ((!this.caps.app && !this.caps.appTopLevelWindow) || (!this.caps.app || this.caps.app.toLowerCase() === 'none')) {
         this.log.info(`No app or top-level window specified in capabilities. Setting root element to null.`);
-        await this.sendPowerShellCommand(NULL_ROOT_ELEMENT);
+        await executeRawCommand(this, NULL_ROOT_ELEMENT);
     }
 
     if (this.caps.app && this.caps.app.toLowerCase() === 'root') {
         this.log.info(`'root' specified as app in capabilities. Setting root element to desktop root.`);
-        await this.sendPowerShellCommand(INIT_ROOT_ELEMENT);
+        await executeRawCommand(this, INIT_ROOT_ELEMENT);
     }
 
     if (this.caps.app && this.caps.app.toLowerCase() !== 'none' && this.caps.app.toLowerCase() !== 'root') {
@@ -167,59 +204,22 @@ export async function sendIsolatedPowerShellCommand(this: NovaWindows2Driver, co
 }
 
 export async function sendPowerShellCommand(this: NovaWindows2Driver, command: string): Promise<string> {
-    const magicNumber = 0xF2EE;
-    // this.log.debug(`Sending PowerShell command: ${command.substring(0, 50)}...`);
-
     const nextCommand = async () => {
         if (!this.powerShell) {
             this.log.warn('PowerShell session not running. It was either closed or has crashed. Attempting to start a new session...');
             await this.startPowerShellSession();
         }
 
-        const result = await new Promise<string>((resolve, reject) => {
-            // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-            const powerShell = this.powerShell!;
-
-            this.powerShellStdOut = '';
-            this.powerShellStdErr = '';
-
-            powerShell.stdin.write(`${command}\n`);
-            powerShell.stdin.write(/* ps1 */ `Write-Output $([char]0x${magicNumber.toString(16)})\n`);
-
-            const onClose = (code: number) => {
-                reject(new errors.UnknownError(`PowerShell process exited unexpectedly with code ${code}`));
-                this.powerShell = undefined; // Clear the reference as the process is dead
-            };
-            powerShell.on('close', onClose);
-
-            const onData: Parameters<typeof powerShell.stdout.on>[1] = ((chunk: any) => {
-                const magicChar = String.fromCharCode(magicNumber);
-                if (chunk.toString().includes(magicChar)) {
-                    powerShell.stdout.off('data', onData);
-                    powerShell.off('close', onClose);
-                    if (this.powerShellStdErr) {
-                        reject(new errors.UnknownError(this.powerShellStdErr));
-                    } else {
-                        // this.log.debug(`Received magic char, resolving command.`);
-                        resolve(this.powerShellStdOut.replace(`${magicChar}`, '').trim());
-                    }
-                }
-            }).bind(this);
-
-            powerShell.stdout.on('data', onData);
-        });
-
-        // commented out for now to avoid cluttering the logs with long command outputs
-        // this.log.debug(`PowerShell command executed:\n${command}\n\nCommand output below:\n${result}\n   --------`);
-
-        return result;
+        // Use the extracted raw command function
+        return await executeRawCommand(this, command);
     };
 
     // Chain the command to the queue
-    this.commandQueue = this.commandQueue.then(nextCommand).catch(() => {
-        // If a previous command failed, we still want to try this one
-        return nextCommand();
-    });
+    // Use .catch to ignore previous failures, then .then to queue this command.
+    // This prevents re-running this command if it fails (no infinite loop).
+    this.commandQueue = this.commandQueue
+        .catch(() => { /* ignore previous error */ })
+        .then(nextCommand);
 
     return this.commandQueue;
 }

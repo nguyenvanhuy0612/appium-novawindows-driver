@@ -109,11 +109,14 @@ export async function execute(this: NovaWindows2Driver, script: string, args: an
 
     if (script === 'powerShell') {
         this.assertFeatureEnabled(POWER_SHELL_FEATURE);
+        // this.log.info(`Executing command: \n${args[0]}`);
         return await this.executePowerShellScript(args[0]);
     }
 
     if (script === 'return window.name') {
-        return await this.sendPowerShellCommand(AutomationElement.automationRoot.buildGetPropertyCommand(Property.NAME));
+        const command = AutomationElement.automationRoot.buildGetPropertyCommand(Property.NAME);
+        // this.log.info(`Executing command: \n${command}`);
+        return await this.sendPowerShellCommand(command);
     }
 
     throw new errors.NotImplementedError();
