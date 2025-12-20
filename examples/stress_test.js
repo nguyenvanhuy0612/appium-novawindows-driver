@@ -75,13 +75,13 @@ async function main() {
         const startTime = Date.now();
         for (let i = 0; i < 100; i++) {
             const startCurTime = Date.now();
-            console.log(`Start Action: ${i + 1}`);
+            console.log(`\nStart Action: ${i + 1}`);
             for (const action in actions) {
                 await actions[action]();
             }
             console.log(`Total time taken for action ${i + 1}: ${Date.now() - startCurTime} ms`);
         }
-        console.log(`Total time taken: ${Date.now() - startTime} ms`);
+        console.log(`\nTotal time taken: ${Date.now() - startTime} ms`);
     } catch (err) {
         console.error('Failed to create session:', err);
     } finally {

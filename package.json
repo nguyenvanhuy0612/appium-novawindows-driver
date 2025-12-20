@@ -1,6 +1,6 @@
 {
   "name": "appium-novawindows2-driver",
-  "version": "0.1.3",
+  "version": "0.1.4",
   "description": "Appium driver for Windows",
   "keywords": [
     "appium",
@@ -11,6 +11,9 @@
     "windows"
   ],
   "main": "build/lib/driver.js",
+  "files": [
+    "build"
+  ],
   "scripts": {
     "build": "tsc -b",
     "watch": "tsc -b --watch",
