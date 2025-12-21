@@ -12,71 +12,123 @@ const INIT_ROOT_ELEMENT = /* ps1 */ `$rootElement = [AutomationElement]::RootEle
 const NULL_ROOT_ELEMENT = /* ps1 */ `$rootElement = $null`;
 const INIT_ELEMENT_TABLE = /* ps1 */ `$elementTable = New-Object System.Collections.Generic.Dictionary[[string]\`,[AutomationElement]]`;
 
+// Global execution chain to enforce sequential execution across all sessions
+let globalExecutionChain = Promise.resolve();
 async function executeRawCommand(driver: NovaWindows2Driver, command: string): Promise<string> {
-    const magicNumber = 0xF2EE;
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-    const powerShell = driver.powerShell!;
+    const nextCommand = async () => {
+        const magicNumber = 0xF2EE;
+        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+        const powerShell = driver.powerShell!;
 
-    driver.powerShellStdOut = '';
-    driver.powerShellStdErr = '';
+        driver.powerShellStdOut = '';
+        driver.powerShellStdErr = '';
 
-    powerShell.stdin.write(`${command}\n`);
-    powerShell.stdin.write(/* ps1 */ `Write-Output $([char]0x${magicNumber.toString(16)})\n`);
+        powerShell.stdin.write(`${command}\n`);
+        powerShell.stdin.write(/* ps1 */ `Write-Output $([char]0x${magicNumber.toString(16)})\n`);
 
-    return await new Promise<string>((resolve, reject) => {
-        const onClose = (code: number) => {
-            reject(new errors.UnknownError(`PowerShell process exited unexpectedly with code ${code}`));
-            driver.powerShell = undefined; // Clear the reference as the process is dead
-        };
-        powerShell.on('close', onClose);
-
-        const onData: Parameters<typeof powerShell.stdout.on>[1] = ((chunk: any) => {
-            const magicChar = String.fromCharCode(magicNumber);
-            if (chunk.toString().includes(magicChar)) {
-                powerShell.stdout.off('data', onData);
-                powerShell.off('close', onClose);
-                if (driver.powerShellStdErr) {
-                    reject(new errors.UnknownError(driver.powerShellStdErr));
+        return await new Promise<string>((resolve, reject) => {
+            const timeoutMs = (driver.caps as any).powerShellCommandTimeout || 60000;
+            const timeout = setTimeout(() => {
+                if (driver.powerShell === powerShell) {
+                    driver.log.warn(`PowerShell command timed out after ${timeoutMs}ms. Terminating process...`);
+                    try {
+                        driver.powerShell.kill();
+                    } catch (e) {
+                        driver.log.warn(`Failed to kill PowerShell process: ${e}`);
+                    }
+                    driver.powerShell = undefined;
                 } else {
-                    resolve(driver.powerShellStdOut.replace(`${magicChar}`, '').trim());
+                    driver.log.warn('PowerShell command timed out, but the session has already been replaced. Ignoring process termination.');
                 }
-            }
-        }).bind(driver);
+                reject(new errors.TimeoutError(`PowerShell command timed out after ${timeoutMs}ms`));
+            }, timeoutMs);
 
-        powerShell.stdout.on('data', onData);
-    });
+            const onClose = (code: number) => {
+                clearTimeout(timeout);
+                reject(new errors.UnknownError(`PowerShell process exited unexpectedly with code ${code}`));
+                driver.powerShell = undefined; // Clear the reference as the process is dead
+            };
+            powerShell.on('close', onClose);
+
+            const onData: Parameters<typeof powerShell.stdout.on>[1] = ((chunk: any) => {
+                const magicChar = String.fromCharCode(magicNumber);
+                if (chunk.toString().includes(magicChar)) {
+                    clearTimeout(timeout);
+                    powerShell.stdout.off('data', onData);
+                    powerShell.off('close', onClose);
+                    if (driver.powerShellStdErr) {
+                        reject(new errors.UnknownError(driver.powerShellStdErr));
+                    } else {
+                        resolve(driver.powerShellStdOut.replace(`${magicChar}`, '').trim());
+                    }
+                }
+            }).bind(driver);
+
+            powerShell.stdout.on('data', onData);
+        });
+    };
+
+    // Chain the command to the global execution queue
+    // We append the new command to the chain, ensuring strictly sequential execution
+    // regardless of which driver instance calls it.
+    const resultPromise = globalExecutionChain
+        .catch(() => { /* ignore previous error */ })
+        .then(nextCommand);
+
+    // Update the chain head
+    // We handle both success and failure here to ensure the chain always resolves to void
+    // and prevents unhandled rejections.
+    globalExecutionChain = resultPromise.then(() => { }, () => { });
+
+    return resultPromise;
 }
 
 async function executeIsolatedRawCommand(driver: NovaWindows2Driver, command: string, powerShell: ChildProcessWithoutNullStreams): Promise<string> {
-    const magicNumber = 0xF2EE;
+    const nextCommand = async () => {
+        const magicNumber = 0xF2EE;
 
-    driver.powerShellStdOut = '';
-    driver.powerShellStdErr = '';
+        driver.powerShellStdOut = '';
+        driver.powerShellStdErr = '';
 
-    powerShell.stdin.write(`${command}\n`);
-    powerShell.stdin.write(/* ps1 */ `Write-Output $([char]0x${magicNumber.toString(16)})\n`);
+        powerShell.stdin.write(`${command}\n`);
+        powerShell.stdin.write(/* ps1 */ `Write-Output $([char]0x${magicNumber.toString(16)})\n`);
 
-    return await new Promise<string>((resolve, reject) => {
-        const onClose = (code: number) => {
-            reject(new errors.UnknownError(`PowerShell process exited unexpectedly with code ${code}`));
-        };
-        powerShell.on('close', onClose);
+        return await new Promise<string>((resolve, reject) => {
+            const onClose = (code: number) => {
+                reject(new errors.UnknownError(`PowerShell process exited unexpectedly with code ${code}`));
+            };
+            powerShell.on('close', onClose);
 
-        const onData: Parameters<typeof powerShell.stdout.on>[1] = ((chunk: any) => {
-            const magicChar = String.fromCharCode(magicNumber);
-            if (chunk.toString().includes(magicChar)) {
-                powerShell.stdout.off('data', onData);
-                powerShell.off('close', onClose);
-                if (driver.powerShellStdErr) {
-                    reject(new errors.UnknownError(driver.powerShellStdErr));
-                } else {
-                    resolve(driver.powerShellStdOut.replace(`${magicChar}`, '').trim());
+            const onData: Parameters<typeof powerShell.stdout.on>[1] = ((chunk: any) => {
+                const magicChar = String.fromCharCode(magicNumber);
+                if (chunk.toString().includes(magicChar)) {
+                    powerShell.stdout.off('data', onData);
+                    powerShell.off('close', onClose);
+                    if (driver.powerShellStdErr) {
+                        reject(new errors.UnknownError(driver.powerShellStdErr));
+                    } else {
+                        resolve(driver.powerShellStdOut.replace(`${magicChar}`, '').trim());
+                    }
                 }
-            }
-        }).bind(driver);
+            }).bind(driver);
 
-        powerShell.stdout.on('data', onData);
-    });
+            powerShell.stdout.on('data', onData);
+        });
+    };
+
+    // Chain the isolated command to the global execution queue as well
+    // Windows UIA is single-threaded system-wide, so even isolated processes must be serialized
+    // to prevent deadlocks when accessing UIA concurrently.
+    const resultPromise = globalExecutionChain
+        .catch(() => { /* ignore previous error */ })
+        .then(nextCommand);
+
+    // Update the chain head
+    // We handle both success and failure here to ensure the chain always resolves to void
+    // and prevents unhandled rejections.
+    globalExecutionChain = resultPromise.then(() => { }, () => { });
+
+    return resultPromise;
 }
 
 export async function startPowerShellSession(this: NovaWindows2Driver): Promise<void> {

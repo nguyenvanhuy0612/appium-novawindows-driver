@@ -196,6 +196,9 @@ export class NovaWindows2Driver extends BaseDriver<NovaWindowsDriverConstraints,
             if (this.caps.shouldCloseApp === undefined) {
                 this.caps.shouldCloseApp = true; // set default value
             }
+            if (this.caps.powerShellCommandTimeout === undefined) {
+                this.caps.powerShellCommandTimeout = 60000; // set default value
+            }
 
             await this.startPowerShellSession();
 
