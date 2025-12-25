@@ -12,6 +12,7 @@ import {
 import {
     Condition,
     PropertyCondition,
+    OrCondition,
     AutomationElement,
     FoundAutomationElement,
     TreeScope,
@@ -22,7 +23,7 @@ import {
     PSInt32Array,
 } from './powershell';
 import { xpathToElIdOrIds } from './xpath';
-import { setDpiAwareness } from './winapi/user32';
+import { releaseModifiers, setDpiAwareness } from './winapi/user32';
 
 import type {
     DefaultCreateSessionResult,
@@ -125,9 +126,23 @@ export class NovaWindows2Driver extends BaseDriver<NovaWindowsDriverConstraints,
             case 'id':
                 condition = new PropertyCondition(Property.RUNTIME_ID, new PSInt32Array(selector.split('.').map(Number)));
                 break;
-            case 'tag name':
-                condition = new PropertyCondition(Property.CONTROL_TYPE, new PSControlType(selector));
+            case 'tag name': {
+                const tag = selector.toLowerCase();
+                if (tag === 'list') {
+                    condition = new OrCondition(
+                        new PropertyCondition(Property.CONTROL_TYPE, new PSControlType('List')),
+                        new PropertyCondition(Property.CONTROL_TYPE, new PSControlType('DataGrid'))
+                    );
+                } else if (tag === 'listitem') {
+                    condition = new OrCondition(
+                        new PropertyCondition(Property.CONTROL_TYPE, new PSControlType('ListItem')),
+                        new PropertyCondition(Property.CONTROL_TYPE, new PSControlType('DataItem'))
+                    );
+                } else {
+                    condition = new PropertyCondition(Property.CONTROL_TYPE, new PSControlType(selector));
+                }
                 break;
+            }
             case 'accessibility id':
                 condition = new PropertyCondition(Property.AUTOMATION_ID, new PSString(selector));
                 break;
@@ -219,6 +234,7 @@ export class NovaWindows2Driver extends BaseDriver<NovaWindowsDriverConstraints,
 
     override async deleteSession(sessionId?: string | null | undefined): Promise<void> {
         this.log.debug('Deleting NovaWindows driver session...');
+        releaseModifiers();
 
         if (this.caps.shouldCloseApp && this.caps.app && this.caps.app.toLowerCase() !== 'root') {
             try {

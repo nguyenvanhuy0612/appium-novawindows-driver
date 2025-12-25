@@ -38,6 +38,40 @@ export async function performActions(this: NovaWindows2Driver, actionSequences: 
     }
 };
 
+export async function releaseActions(this: NovaWindows2Driver): Promise<void> {
+    const { pressed } = this.keyboardState;
+
+    for (const key of pressed) {
+        try {
+            keyUp(key);
+        } catch (e) {
+            this.log.warn(`Failed to release key ${key}: ${e}`);
+        }
+    }
+    this.keyboardState.pressed.clear();
+
+    if (this.keyboardState.shift) {
+        keyUp(Key.SHIFT);
+        this.keyboardState.shift = false;
+    }
+    if (this.keyboardState.ctrl) {
+        keyUp(Key.CONTROL);
+        this.keyboardState.ctrl = false;
+    }
+    if (this.keyboardState.alt) {
+        keyUp(Key.ALT);
+        this.keyboardState.alt = false;
+    }
+    if (this.keyboardState.meta) {
+        keyUp(Key.META);
+        this.keyboardState.meta = false;
+    }
+
+    mouseUp(0);
+    mouseUp(1);
+    mouseUp(2);
+}
+
 export async function handleKeyActionSequence(this: NovaWindows2Driver, actionSequence: KeyActionSequence): Promise<void> {
     const actions = actionSequence.actions;
     for (const action of actions) {
@@ -210,10 +244,10 @@ export async function handleKeyAction(this: NovaWindows2Driver, action: KeyActio
                 if (this.keyboardState.alt) {
                     await this.handleKeyAction({ type: 'keyUp', value: Key.ALT });
                 }
-                for (const key in Array.of(this.keyboardState.pressed)) {
+                for (const key of this.keyboardState.pressed) {
                     keyUp(key);
-                    this.keyboardState.pressed.delete(key);
                 }
+                this.keyboardState.pressed.clear();
             }
             return;
         default:

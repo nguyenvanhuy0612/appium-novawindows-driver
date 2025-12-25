@@ -87,6 +87,8 @@ export const PAGE_SOURCE = pwsh /* ps1 */ `
             $tagName = ''
             try {
                 $tagName = $controlType.ProgrammaticName.Split('.')[-1]
+                if ($tagName -eq 'DataGrid') { $tagName = 'List' }
+                elseif ($tagName -eq 'DataItem') { $tagName = 'ListItem' }
             } catch {
                 # fallback to LocalizedControlType ControlType is empty
                 $tagName = -join ($localizedControlType -split ' ' | ForEach-Object {

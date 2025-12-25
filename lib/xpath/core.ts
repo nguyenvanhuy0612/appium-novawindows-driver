@@ -207,7 +207,7 @@ export async function processExprNode<T>(exprNode: ExprNode, context: Automation
             return result;
         }
         case OR:
-            case AND: {
+        case AND: {
             const [lhs] = await handleFunctionCall<T>(BOOLEAN, context, sendPowerShellCommand, exprNode.lhs);
             const [rhs] = await handleFunctionCall<T>(BOOLEAN, context, sendPowerShellCommand, exprNode.rhs);
 
@@ -238,31 +238,31 @@ export async function processExprNode<T>(exprNode: ExprNode, context: Automation
         case MODULUS:
         case MULTIPLICATIVE:
         case SUBTRACTIVE:
-        {
-            const [lhs] = await handleFunctionCall<number>(NUMBER, context, sendPowerShellCommand, exprNode.lhs);
-            const [rhs] = await handleFunctionCall<number>(NUMBER, context, sendPowerShellCommand, exprNode.rhs);
+            {
+                const [lhs] = await handleFunctionCall<number>(NUMBER, context, sendPowerShellCommand, exprNode.lhs);
+                const [rhs] = await handleFunctionCall<number>(NUMBER, context, sendPowerShellCommand, exprNode.rhs);
 
-            switch (exprNode.type) {
-                case ADDITIVE:
-                    return [(lhs + rhs) as T];
-                case DIVISIONAL:
-                    return [(lhs / rhs) as T];
-                case GREATER_THAN:
-                    return [(lhs > rhs) as T];
-                case GREATER_THAN_OR_EQUAL:
-                    return [(lhs >= rhs) as T];
-                case LESS_THAN:
-                    return [(lhs < rhs) as T];
-                case LESS_THAN_OR_EQUAL:
-                    return [(lhs <= rhs) as T];
-                case MODULUS:
-                    return [(lhs % rhs) as T];
-                case MULTIPLICATIVE:
-                    return [(lhs * rhs) as T];
-                case SUBTRACTIVE:
-                    return [(lhs - rhs) as T];
+                switch (exprNode.type) {
+                    case ADDITIVE:
+                        return [(lhs + rhs) as T];
+                    case DIVISIONAL:
+                        return [(lhs / rhs) as T];
+                    case GREATER_THAN:
+                        return [(lhs > rhs) as T];
+                    case GREATER_THAN_OR_EQUAL:
+                        return [(lhs >= rhs) as T];
+                    case LESS_THAN:
+                        return [(lhs < rhs) as T];
+                    case LESS_THAN_OR_EQUAL:
+                        return [(lhs <= rhs) as T];
+                    case MODULUS:
+                        return [(lhs % rhs) as T];
+                    case MULTIPLICATIVE:
+                        return [(lhs * rhs) as T];
+                    case SUBTRACTIVE:
+                        return [(lhs - rhs) as T];
+                }
             }
-        }
     }
 }
 
@@ -322,13 +322,13 @@ export async function processExprNodeAsPredicate(exprNode: ExprNode, context: Au
             }, context, positions, sendPowerShellCommand, relativeExprNodes);
         case OR:
             return [new OrCondition(
-                    (await processExprNodeAsPredicate(exprNode.lhs, context, positions, sendPowerShellCommand, relativeExprNodes))[0],
-                    (await processExprNodeAsPredicate(exprNode.rhs, context, positions, sendPowerShellCommand, relativeExprNodes))[0]
+                (await processExprNodeAsPredicate(exprNode.lhs, context, positions, sendPowerShellCommand, relativeExprNodes))[0],
+                (await processExprNodeAsPredicate(exprNode.rhs, context, positions, sendPowerShellCommand, relativeExprNodes))[0]
             ), relativeExprNodes];
         case AND:
             return [new AndCondition(
-                    (await processExprNodeAsPredicate(exprNode.lhs, context, positions, sendPowerShellCommand, relativeExprNodes))[0],
-                    (await processExprNodeAsPredicate(exprNode.rhs, context, positions, sendPowerShellCommand, relativeExprNodes))[0]
+                (await processExprNodeAsPredicate(exprNode.lhs, context, positions, sendPowerShellCommand, relativeExprNodes))[0],
+                (await processExprNodeAsPredicate(exprNode.rhs, context, positions, sendPowerShellCommand, relativeExprNodes))[0]
             ), relativeExprNodes];
         case EQUALITY:
         case INEQUALITY: {
@@ -541,6 +541,21 @@ function convertNodeTestToCondition(nodeTest: NodeTestNode): Condition {
                 // PSControlType already has a logic to correct the value to localized control type
                 return new PropertyCondition(Property.LOCALIZED_CONTROL_TYPE, new PSString(new PSControlType(nodeTest.name).toString()));
             }
+
+            if (nodeTest.name.toLowerCase() === 'list') {
+                return new OrCondition(
+                    new PropertyCondition(Property.CONTROL_TYPE, new PSControlType('List')),
+                    new PropertyCondition(Property.CONTROL_TYPE, new PSControlType('DataGrid'))
+                );
+            }
+
+            if (nodeTest.name.toLowerCase() === 'listitem') {
+                return new OrCondition(
+                    new PropertyCondition(Property.CONTROL_TYPE, new PSControlType('ListItem')),
+                    new PropertyCondition(Property.CONTROL_TYPE, new PSControlType('DataItem'))
+                );
+            }
+
             return new PropertyCondition(Property.CONTROL_TYPE, new PSControlType(nodeTest.name));
         case NODE_TYPE_TEST:
             if (nodeTest.name === NODE) {

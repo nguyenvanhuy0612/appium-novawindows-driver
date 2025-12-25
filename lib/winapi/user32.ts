@@ -85,8 +85,8 @@ interface DeviceModeAnsi {
             dmDefaultSource: number,
             dmPrintQuality: number,
         },
-      dmPosition: Point,
-      s2: {
+        dmPosition: Point,
+        s2: {
             dmPosition: Point,
             dmDisplayOrientation: number,
             dmDisplayFixedOutput: number,
@@ -222,22 +222,22 @@ const DEVMODEA = struct('DEVMODEA', {
     dmDriverExtra: 'uint16',
     dmFields: 'uint32',
     u1: union({
-      s1: struct({
-        dmOrientation: 'short',
-        dmPaperSize: 'short',
-        dmPaperLength: 'short',
-        dmPaperWidth: 'short',
-        dmScale: 'short',
-        dmCopies: 'short',
-        dmDefaultSource: 'short',
-        dmPrintQuality: 'short',
-      }),
-      dmPosition: POINT,
-      s2: struct({
+        s1: struct({
+            dmOrientation: 'short',
+            dmPaperSize: 'short',
+            dmPaperLength: 'short',
+            dmPaperWidth: 'short',
+            dmScale: 'short',
+            dmCopies: 'short',
+            dmDefaultSource: 'short',
+            dmPrintQuality: 'short',
+        }),
         dmPosition: POINT,
-        dmDisplayOrientation: 'uint32',
-        dmDisplayFixedOutput: 'uint32',
-      }),
+        s2: struct({
+            dmPosition: POINT,
+            dmDisplayOrientation: 'uint32',
+            dmDisplayFixedOutput: 'uint32',
+        }),
     }),
     dmColor: 'short',
     dmDuplex: 'short',
@@ -250,8 +250,8 @@ const DEVMODEA = struct('DEVMODEA', {
     dmPelsWidth: 'uint32',
     dmPelsHeight: 'uint32',
     u2: union({
-      dmDisplayFlags: 'uint32',
-      dmNup: 'uint32',
+        dmDisplayFlags: 'uint32',
+        dmNup: 'uint32',
     }),
     dmDisplayFrequency: 'uint32',
     dmICMMethod: 'uint32',
@@ -302,13 +302,13 @@ const EnumWindows = user32.func(/* c */ `BOOL __stdcall EnumWindows(EnumWindowsP
 const SetForegroundWindow = user32.func(/* c */ `BOOL __stdcall SetForegroundWindow(HWND hWnd)`) as (hWnd: HWND) => BOOL;
 
 function makeKeyboardEvent(args: {
-        /** A virtual-key code. The code must be a value in the range 1 to 254. If the dwFlags member specifies KEYEVENTF_UNICODE, wVk must be 0. */
-        vk?: VirtualKey,
-        /** A hardware scan code for the key. If dwFlags specifies KEYEVENTF_UNICODE, wScan specifies a Unicode character which is to be sent to the foreground application. */
-        scan?: ScanCode | string,
-        /** Set to true if the key should be pressed, and false if key is should be released. */
-        down: boolean,
-    }
+    /** A virtual-key code. The code must be a value in the range 1 to 254. If the dwFlags member specifies KEYEVENTF_UNICODE, wVk must be 0. */
+    vk?: VirtualKey,
+    /** A hardware scan code for the key. If dwFlags specifies KEYEVENTF_UNICODE, wScan specifies a Unicode character which is to be sent to the foreground application. */
+    scan?: ScanCode | string,
+    /** Set to true if the key should be pressed, and false if key is should be released. */
+    down: boolean,
+}
 ): KeyboardEvent {
     let flags: KeyEventFlags = 0;
 
@@ -421,19 +421,19 @@ function makeMouseUpEvents(button: number): MouseEvent[] {
 }
 
 function makeMouseMoveEvents(args: {
-        /** The absolute position of the mouse, or the amount of motion since the last mouse event was generated, depending on the value of the dwFlags member. Absolute data is specified as the x coordinate of the mouse; relative data is specified as the number of pixels moved. */
-        x: number,
-        /** The absolute position of the mouse, or the amount of motion since the last mouse event was generated, depending on the value of the dwFlags member. Absolute data is specified as the y coordinate of the mouse; relative data is specified as the number of pixels moved. */
-        y: number,
-        /** Set to true if the event is a mouse wheel move, and false if it's a mouse move. */
-        wheel: boolean,
-        /** Set to true if the event is a mouse move with relative coordinates. This argument is ignored for mouse wheel move. */
-        relative?: boolean,
-        /** Set to screen resolution [width, height] when the mouse move is absolute. */
-        screenResolutionAndRefreshRate?: ReturnType<typeof getScreenResolutionAndRefreshRate>;
-    }
+    /** The absolute position of the mouse, or the amount of motion since the last mouse event was generated, depending on the value of the dwFlags member. Absolute data is specified as the x coordinate of the mouse; relative data is specified as the number of pixels moved. */
+    x: number,
+    /** The absolute position of the mouse, or the amount of motion since the last mouse event was generated, depending on the value of the dwFlags member. Absolute data is specified as the y coordinate of the mouse; relative data is specified as the number of pixels moved. */
+    y: number,
+    /** Set to true if the event is a mouse wheel move, and false if it's a mouse move. */
+    wheel: boolean,
+    /** Set to true if the event is a mouse move with relative coordinates. This argument is ignored for mouse wheel move. */
+    relative?: boolean,
+    /** Set to screen resolution [width, height] when the mouse move is absolute. */
+    screenResolutionAndRefreshRate?: ReturnType<typeof getScreenResolutionAndRefreshRate>;
+}
 ): MouseEvent[] {
-    const { x, y, wheel, relative, screenResolutionAndRefreshRate} = args;
+    const { x, y, wheel, relative, screenResolutionAndRefreshRate } = args;
 
     if (wheel) {
         const mouseEvents: MouseEvent[] = [];
@@ -771,7 +771,7 @@ export function keyUp(char: string, forceUnicode: boolean = false): void {
 }
 
 export async function mouseMoveRelative(x: number, y: number, duration: number = 0, easingFunction?: string): Promise<void> {
-    await sendMouseMoveInput({x, y, relative: true, duration, easingFunction});
+    await sendMouseMoveInput({ x, y, relative: true, duration, easingFunction });
 }
 
 export function mouseScroll(x: number, y: number): void {
@@ -779,7 +779,7 @@ export function mouseScroll(x: number, y: number): void {
 }
 
 export async function mouseMoveAbsolute(x: number, y: number, duration: number = 0, easingFunction?: string): Promise<void> {
-    await sendMouseMoveInput({x, y, relative: false, duration, easingFunction});
+    await sendMouseMoveInput({ x, y, relative: false, duration, easingFunction });
 }
 
 export function mouseDown(button: number = 0): void {
@@ -799,6 +799,27 @@ export function setDpiAwareness() {
     if (!SetProcessDPIAware()) {
         throw new errors.UnknownError('An error occurred while trying to set DPI awareness.');
     };
+}
+
+export function releaseModifiers(): void {
+    const modifiers = [
+        Key.SHIFT,
+        Key.CONTROL,
+        Key.ALT,
+        Key.META,
+        Key.R_SHIFT,
+        Key.R_CONTROL,
+        Key.R_ALT,
+        Key.R_META,
+    ];
+
+    for (const key of modifiers) {
+        try {
+            keyUp(key);
+        } catch {
+            // ignore
+        }
+    }
 }
 
 export function getWindowAllHandlesForProcessIds(processIds: number[]): number[] {

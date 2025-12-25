@@ -311,6 +311,21 @@ export function convertStringToCondition(selector: string): Condition {
         // workaround for ControlType 50039 and 50040 not supported in UIAutomationClient
         if (propertyValue instanceof PSControlType && Object.values(ExtraControlType).includes(propertyValue.toString().toLocaleLowerCase() as ExtraControlType)) {
             processedItems.push(new PropertyCondition(Property.LOCALIZED_CONTROL_TYPE, new PSString(propertyValue.toString())));
+        } else if (property === Property.CONTROL_TYPE && propertyValue instanceof PSControlType) {
+            const val = propertyValue.toString().toLowerCase();
+            if (val === 'list') {
+                processedItems.push(new OrCondition(
+                    new PropertyCondition(Property.CONTROL_TYPE, new PSControlType('List')),
+                    new PropertyCondition(Property.CONTROL_TYPE, new PSControlType('DataGrid'))
+                ));
+            } else if (val === 'listitem') {
+                processedItems.push(new OrCondition(
+                    new PropertyCondition(Property.CONTROL_TYPE, new PSControlType('ListItem')),
+                    new PropertyCondition(Property.CONTROL_TYPE, new PSControlType('DataItem'))
+                ));
+            } else {
+                processedItems.push(new PropertyCondition(property as Property, propertyValue));
+            }
         } else {
             processedItems.push(new PropertyCondition(property as Property, propertyValue));
         }

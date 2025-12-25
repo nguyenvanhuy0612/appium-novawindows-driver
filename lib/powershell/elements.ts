@@ -312,7 +312,12 @@ const GET_ELEMENT_RECT = pwsh$ /* ps1 */ `
 
 const GET_ELEMENT_TAG_NAME = pwsh$ /* ps1 */ `
     ${0}.Current.ControlType.ProgrammaticName |
-    ForEach-Object { $_.Split('.')[-1] }
+    ForEach-Object {
+        $type = $_.Split('.')[-1]
+        if ($type -eq 'DataGrid') { 'List' }
+        elseif ($type -eq 'DataItem') { 'ListItem' }
+        else { $type }
+    }
 `;
 
 const SET_FOCUS_TO_ELEMENT = pwsh$ /* ps1 */ `${0}.SetFocus()`;
