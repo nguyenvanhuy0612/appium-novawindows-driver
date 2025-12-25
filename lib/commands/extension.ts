@@ -119,6 +119,21 @@ export async function execute(this: NovaWindows2Driver, script: string, args: an
         return await this.sendPowerShellCommand(command);
     }
 
+    if (script === 'pullFile') {
+        const { path } = args[0];
+        return await this.pullFile(path);
+    }
+
+    if (script === 'pushFile') {
+        const { path, data } = args[0];
+        return await this.pushFile(path, data);
+    }
+
+    if (script === 'pullFolder') {
+        const { path } = args[0];
+        return await this.pullFolder(path);
+    }
+
     throw new errors.NotImplementedError();
 };
 
