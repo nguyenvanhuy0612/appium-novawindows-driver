@@ -49,7 +49,6 @@ export async function handlePointerActionSequence(this: NovaWindows2Driver, acti
     switch (actionSequence.parameters?.pointerType) {
         case 'touch':
         case 'pen':
-            throw new errors.NotImplementedError(`Pointer type ${actionSequence.parameters?.pointerType} not implemented yet.`);
         case 'mouse':
         default:
             await this.handleMousePointerActionSequence(actionSequence);
@@ -110,7 +109,7 @@ export async function handleNullActionSequence(this: NovaWindows2Driver, actionS
 
 export async function handleMouseMoveAction(this: NovaWindows2Driver, action: PointerMoveAction | ScrollAction): Promise<void> {
     const easingFunction = this.caps.smoothPointerMove;
-    switch (action.origin) {
+    switch (action.origin || 'viewport') {
         case 'pointer':
             await mouseMoveRelative(action.x, action.y, action.duration, easingFunction);
             break;
