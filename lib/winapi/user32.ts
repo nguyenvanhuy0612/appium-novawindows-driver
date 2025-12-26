@@ -801,27 +801,6 @@ export function setDpiAwareness() {
     };
 }
 
-export function releaseModifiers(): void {
-    const modifiers = [
-        Key.SHIFT,
-        Key.CONTROL,
-        Key.ALT,
-        Key.META,
-        Key.R_SHIFT,
-        Key.R_CONTROL,
-        Key.R_ALT,
-        Key.R_META,
-    ];
-
-    for (const key of modifiers) {
-        try {
-            keyUp(key);
-        } catch {
-            // ignore
-        }
-    }
-}
-
 export function getWindowAllHandlesForProcessIds(processIds: number[]): number[] {
     const handles: number[] = [];
     EnumWindows((hWnd) => {

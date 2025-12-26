@@ -23,7 +23,7 @@ import {
     PSInt32Array,
 } from './powershell';
 import { xpathToElIdOrIds } from './xpath';
-import { releaseModifiers, setDpiAwareness } from './winapi/user32';
+import { setDpiAwareness } from './winapi/user32';
 
 import type {
     DefaultCreateSessionResult,
@@ -234,7 +234,6 @@ export class NovaWindows2Driver extends BaseDriver<NovaWindowsDriverConstraints,
 
     override async deleteSession(sessionId?: string | null | undefined): Promise<void> {
         this.log.debug('Deleting NovaWindows driver session...');
-        releaseModifiers();
 
         if (this.caps.shouldCloseApp && this.caps.app && this.caps.app.toLowerCase() !== 'root') {
             try {
